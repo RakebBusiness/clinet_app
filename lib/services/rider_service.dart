@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'test_data_service.dart';
 
 class RiderService {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -34,16 +35,14 @@ class RiderService {
       final response = await _supabase
           .from('motards')
           .select('*')
-          .eq('status', 'online');
-          // Removed other filters to be more permissive
+          .eq('status', 'online')
           .limit(20);
 
       if (response == null || response.isEmpty) {
         print('⚠️ No riders found in database');
         print('💡 Creating test riders...');
         // Try to create test data if none exists
-        final testDataService = TestDataService();
-        await testDataService.createTestRiders();
+        await _createSimpleTestRiders();
         
         // Try again after creating test data
         final retryResponse = await _supabase
@@ -134,7 +133,6 @@ class RiderService {
         } catch (parseError) {
           print('❌ Error parsing rider ${rider['nom_complet']}: $parseError');
         }
-        return [];
       }
 
       // Sort by distance
@@ -148,10 +146,10 @@ class RiderService {
     }
   }
 
-  // Create test riders for Lakhdaria area if none exist
-  Future<void> createTestRiders() async {
+  // Create simple test riders for Lakhdaria area if none exist
+  Future<void> _createSimpleTestRiders() async {
     try {
-      print('🏍️ Creating test riders in Lakhdaria area...');
+      print('🏍️ Creating simple test riders in Lakhdaria area...');
 
       // Lakhdaria coordinates: 36.5644° N, 3.5892° E
       final testRiders = [
@@ -211,59 +209,30 @@ class RiderService {
         },
       ];
 
-      for (var rider in response) {
-        try {
-          await _supabase.from('motards').insert(rider);
-          print('✅ Created rider: ${rider['nom_complet']}');
-        } catch (e) {
-          print('❌ Failed to create rider ${rider['nom_complet']}: $e');
-        }
-      }
-
-      print('✅ Test riders created successfully!');
-    } catch (e) {
-      print('Error creating test riders: $e');
-    }
-  }
-
-  // Create test riders for Lakhdaria, Bouira area
-  Future<void> createTestRiders() async {
-    try {
-      // Check if we have any riders already
-      final existingRiders = await _supabase
-          .from('motards')
-          .select('id')
-          .limit(1);
-
-      if (existingRiders.isNotEmpty) {
-        print('✅ Riders already exist in database');
-        return;
-      }
-
-      print('🏍️ Creating test riders in Lakhdaria area...');
-
-      // Create riders with minimal required fields
-      final testRiders = [
-        {
-          'nom_complet': 'Test Rider 1',
-          'num_tel': '+213661234567',
-          'status': 'online',
-          'is_verified': true,
-          'rating_average': 4.5,
-          'current_location': 'POINT(3.5892 36.5644)',
-          'statut_bloque': false,
-        },
-        // Add more test riders...
-      ];
-
       for (var rider in testRiders) {
         try {
           await _supabase.from('motards').insert(rider);
           print('✅ Created rider: ${rider['nom_complet']}');
         } catch (e) {
           print('❌ Failed to create rider ${rider['nom_complet']}: $e');
+          // Try with minimal data if full insert fails
+          try {
+            final minimalRider = {
+              'nom_complet': rider['nom_complet'],
+              'num_tel': rider['num_tel'],
+              'status': 'online',
+              'rating_average': rider['rating_average'],
+              'current_location': rider['current_location'],
+            };
+            await _supabase.from('motards').insert(minimalRider);
+            print('✅ Created minimal rider: ${rider['nom_complet']}');
+          } catch (e2) {
+            print('❌ Failed to create minimal rider: $e2');
+          }
         }
       }
+
+      print('✅ Test riders created successfully!');
     } catch (e) {
       print('Error creating test riders: $e');
     }
