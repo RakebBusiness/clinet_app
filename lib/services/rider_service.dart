@@ -40,23 +40,7 @@ class RiderService {
 
       if (response == null || response.isEmpty) {
         print('⚠️ No riders found in database');
-        print('💡 Creating test riders...');
-        // Try to create test data if none exists
-        await _createSimpleTestRiders();
-        
-        // Try again after creating test data
-        final retryResponse = await _supabase
-            .from('motards')
-            .select('*')
-            .eq('status', 'online')
-            .limit(20);
-            
-        if (retryResponse == null || retryResponse.isEmpty) {
-          print('⚠️ Still no riders found after creating test data');
-          return [];
-        }
-        
-        return _processRiderData(retryResponse, userLocation, radiusKm);
+        return [];
       }
 
       return _processRiderData(response, userLocation, radiusKm);
@@ -143,98 +127,6 @@ class RiderService {
     } catch (e) {
       print('Error processing rider data: $e');
       return [];
-    }
-  }
-
-  // Create simple test riders for Lakhdaria area if none exist
-  Future<void> _createSimpleTestRiders() async {
-    try {
-      print('🏍️ Creating simple test riders in Lakhdaria area...');
-
-      // Lakhdaria coordinates: 36.5644° N, 3.5892° E
-      final testRiders = [
-        {
-          'nom_complet': 'Ahmed Benali',
-          'num_tel': '+213661234567',
-          'status': 'online',
-          'is_verified': true,
-          'rating_average': 4.8,
-          'current_location': 'POINT(${3.5892 + 0.01} ${36.5644 + 0.005})', // ~1km northeast
-          'statut_bloque': false,
-        },
-        {
-          'nom_complet': 'Karim Meziane',
-          'num_tel': '+213662345678',
-          'status': 'online',
-          'is_verified': true,
-          'rating_average': 4.6,
-          'current_location': 'POINT(${3.5892 - 0.015} ${36.5644 - 0.008})', // ~2km southwest
-          'statut_bloque': false,
-        },
-        {
-          'nom_complet': 'Yacine Boumediene',
-          'num_tel': '+213663456789',
-          'status': 'online',
-          'is_verified': true,
-          'rating_average': 4.9,
-          'current_location': 'POINT(${3.5892 + 0.02} ${36.5644 - 0.01})', // ~2.5km southeast
-          'statut_bloque': false,
-        },
-        {
-          'nom_complet': 'Sofiane Khelifi',
-          'num_tel': '+213664567890',
-          'status': 'online',
-          'is_verified': true,
-          'rating_average': 4.7,
-          'current_location': 'POINT(${3.5892 - 0.008} ${36.5644 + 0.012})', // ~1.5km northwest
-          'statut_bloque': false,
-        },
-        {
-          'nom_complet': 'Nabil Saidi',
-          'num_tel': '+213665678901',
-          'status': 'online',
-          'is_verified': true,
-          'rating_average': 4.5,
-          'current_location': 'POINT(${3.5892 + 0.025} ${36.5644 + 0.015})', // ~3km northeast
-          'statut_bloque': false,
-        },
-        {
-          'nom_complet': 'Djamel Brahimi',
-          'num_tel': '+213666789012',
-          'status': 'online',
-          'is_verified': true,
-          'rating_average': 4.4,
-          'current_location': 'POINT(${3.5892 - 0.02} ${36.5644 + 0.008})', // ~2.2km northwest
-          'statut_bloque': false,
-        },
-      ];
-
-      for (var rider in testRiders) {
-        try {
-          await _supabase.from('motards').insert(rider);
-          print('✅ Created rider: ${rider['nom_complet']}');
-        } catch (e) {
-          print('❌ Failed to create rider ${rider['nom_complet']}: $e');
-          // Try with minimal data if full insert fails
-          try {
-            final minimalRider = {
-              'nom_complet': rider['nom_complet'],
-              'num_tel': rider['num_tel'],
-              'status': 'online',
-              'rating_average': rider['rating_average'],
-              'current_location': rider['current_location'],
-            };
-            await _supabase.from('motards').insert(minimalRider);
-            print('✅ Created minimal rider: ${rider['nom_complet']}');
-          } catch (e2) {
-            print('❌ Failed to create minimal rider: $e2');
-          }
-        }
-      }
-
-      print('✅ Test riders created successfully!');
-    } catch (e) {
-      print('Error creating test riders: $e');
     }
   }
 

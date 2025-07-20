@@ -33,7 +33,6 @@ class _HomeScreenState extends State<HomeScreen> {
   List<RiderData> _nearbyRiders = [];
   bool _isLoadingRiders = false;
   final RiderService _riderService = RiderService();
-  final TestDataService _testDataService = TestDataService();
   
   // Location selection mode
   bool _isLocationSelectionMode = false;
@@ -47,50 +46,12 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _getCurrentLocation();
-    _initializeTestData();
+    _loadNearbyRiders();
     
     // Listen for location selection requests
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkForLocationSelectionRequest();
     });
-  }
-
-  Future<void> _initializeTestData() async {
-    try {
-      print('🚀 Initializing test data for Lakhdaria area...');
-      
-      // Always try to initialize test data
-      await _testDataService.initializeTestData();
-      
-      // Show success message
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Test data setup completed!'),
-            backgroundColor: Color(0xFF32C156),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-      
-      // Always try to load riders regardless of test data creation
-      await Future.delayed(const Duration(milliseconds: 500));
-      _loadNearbyRiders();
-      
-    } catch (e) {
-      print('❌ Error initializing test data: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('⚠️ Error with test data: ${e.toString().substring(0, 50)}...'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-      
-      // Still try to load any existing riders
-      _loadNearbyRiders();
-    }
   }
 
   Future<void> _loadNearbyRiders() async {
@@ -236,7 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
             title: rider.nomComplet,
             snippet: '⭐ ${rider.ratingAverage.toStringAsFixed(1)} • ${rider.distanceKm.toStringAsFixed(1)}km away',
           ),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
           onTap: () => _showRiderDetails(rider),
         ),
       );
@@ -279,7 +240,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     borderRadius: BorderRadius.circular(30),
                   ),
                   child: const Icon(
-                    Icons.person,
+                    Icons.motorcycle,
                     size: 30,
                     color: Color(0xFF32C156),
                   ),
