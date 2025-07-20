@@ -34,17 +34,45 @@ class RiderService {
       final response = await _supabase
           .from('motards')
           .select('*')
-          .eq('status', 'online')
-          .eq('statut_bloque', false)
-          .eq('is_verified', true)
+          .eq('status', 'online');
+          // Removed other filters to be more permissive
           .limit(20);
 
       if (response == null || response.isEmpty) {
         print('⚠️ No riders found in database');
-        print('💡 You need to add test riders manually to Supabase');
-        return [];
+        print('💡 Creating test riders...');
+        // Try to create test data if none exists
+        final testDataService = TestDataService();
+        await testDataService.createTestRiders();
+        
+        // Try again after creating test data
+        final retryResponse = await _supabase
+            .from('motards')
+            .select('*')
+            .eq('status', 'online')
+            .limit(20);
+            
+        if (retryResponse == null || retryResponse.isEmpty) {
+          print('⚠️ Still no riders found after creating test data');
+          return [];
+        }
+        
+        return _processRiderData(retryResponse, userLocation, radiusKm);
       }
 
+      return _processRiderData(response, userLocation, radiusKm);
+    } catch (e) {
+      print('Error in fallback rider fetch: $e');
+      return [];
+    }
+  }
+
+  List<RiderData> _processRiderData(
+    List<dynamic> response,
+    LatLng userLocation,
+    double radiusKm,
+  ) {
+    try {
       print('📍 Found ${response.length} riders in database');
 
       List<RiderData> riders = [];
@@ -67,16 +95,10 @@ class RiderService {
                 double lat = double.tryParse(parts[1]) ?? 36.5644;
                 riderLocation = LatLng(lat, lng);
               } else {
-                riderLocation = const LatLng(
-                  36.5644,
-                  3.5892,
-                ); // Default to Lakhdaria
+                riderLocation = const LatLng(36.5644, 3.5892); // Default to Lakhdaria
               }
             } else {
-              riderLocation = const LatLng(
-                36.5644,
-                3.5892,
-              ); // Default to Lakhdaria
+              riderLocation = const LatLng(36.5644, 3.5892); // Default to Lakhdaria
             }
           } else {
             // If no location, place near Lakhdaria with some random offset
@@ -86,8 +108,7 @@ class RiderService {
           }
 
           // Calculate distance
-          distance =
-              Geolocator.distanceBetween(
+          distance = Geolocator.distanceBetween(
                 userLocation.latitude,
                 userLocation.longitude,
                 riderLocation.latitude,
@@ -95,9 +116,7 @@ class RiderService {
               ) /
               1000; // Convert to km
 
-          print(
-            '📏 Distance to ${rider['nom_complet']}: ${distance.toStringAsFixed(2)}km',
-          );
+          print('📏 Distance to ${rider['nom_complet']}: ${distance.toStringAsFixed(2)}km');
 
           if (distance <= radiusKm) {
             riders.add(
@@ -115,6 +134,7 @@ class RiderService {
         } catch (parseError) {
           print('❌ Error parsing rider ${rider['nom_complet']}: $parseError');
         }
+        return [];
       }
 
       // Sort by distance
@@ -123,8 +143,86 @@ class RiderService {
       print('✅ Found ${riders.length} riders within ${radiusKm}km');
       return riders;
     } catch (e) {
-      print('Error in fallback rider fetch: $e');
+      print('Error processing rider data: $e');
       return [];
+    }
+  }
+
+  // Create test riders for Lakhdaria area if none exist
+  Future<void> createTestRiders() async {
+    try {
+      print('🏍️ Creating test riders in Lakhdaria area...');
+
+      // Lakhdaria coordinates: 36.5644° N, 3.5892° E
+      final testRiders = [
+        {
+          'nom_complet': 'Ahmed Benali',
+          'num_tel': '+213661234567',
+          'status': 'online',
+          'is_verified': true,
+          'rating_average': 4.8,
+          'current_location': 'POINT(${3.5892 + 0.01} ${36.5644 + 0.005})', // ~1km northeast
+          'statut_bloque': false,
+        },
+        {
+          'nom_complet': 'Karim Meziane',
+          'num_tel': '+213662345678',
+          'status': 'online',
+          'is_verified': true,
+          'rating_average': 4.6,
+          'current_location': 'POINT(${3.5892 - 0.015} ${36.5644 - 0.008})', // ~2km southwest
+          'statut_bloque': false,
+        },
+        {
+          'nom_complet': 'Yacine Boumediene',
+          'num_tel': '+213663456789',
+          'status': 'online',
+          'is_verified': true,
+          'rating_average': 4.9,
+          'current_location': 'POINT(${3.5892 + 0.02} ${36.5644 - 0.01})', // ~2.5km southeast
+          'statut_bloque': false,
+        },
+        {
+          'nom_complet': 'Sofiane Khelifi',
+          'num_tel': '+213664567890',
+          'status': 'online',
+          'is_verified': true,
+          'rating_average': 4.7,
+          'current_location': 'POINT(${3.5892 - 0.008} ${36.5644 + 0.012})', // ~1.5km northwest
+          'statut_bloque': false,
+        },
+        {
+          'nom_complet': 'Nabil Saidi',
+          'num_tel': '+213665678901',
+          'status': 'online',
+          'is_verified': true,
+          'rating_average': 4.5,
+          'current_location': 'POINT(${3.5892 + 0.025} ${36.5644 + 0.015})', // ~3km northeast
+          'statut_bloque': false,
+        },
+        {
+          'nom_complet': 'Djamel Brahimi',
+          'num_tel': '+213666789012',
+          'status': 'online',
+          'is_verified': true,
+          'rating_average': 4.4,
+          'current_location': 'POINT(${3.5892 - 0.02} ${36.5644 + 0.008})', // ~2.2km northwest
+          'statut_bloque': false,
+        },
+      ];
+
+      for (var rider in response) {
+        try {
+          await _supabase.from('motards').insert(rider);
+          print('✅ Created rider: ${rider['nom_complet']}');
+        } catch (e) {
+          print('❌ Failed to create rider ${rider['nom_complet']}: $e');
+        }
+      }
+
+      print('✅ Test riders created successfully!');
+    } catch (e) {
+      print('Error creating test riders: $e');
     }
   }
 

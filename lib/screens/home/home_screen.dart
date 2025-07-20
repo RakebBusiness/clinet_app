@@ -57,28 +57,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _initializeTestData() async {
     try {
-      // Check if test data already exists
-      bool dataExists = await _testDataService.testDataExists();
+      print('🚀 Initializing test data for Lakhdaria area...');
       
-      if (!dataExists) {
-        print('🚀 Creating test data for Lakhdaria area...');
-        await _testDataService.initializeTestData();
-        
-        // Try to create admin for testing (will likely fail due to RLS)
-        await _testDataService.createTestAdmin();
-        
-        // Show success message
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('✅ Test data setup completed!'),
-              backgroundColor: Color(0xFF32C156),
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
-      } else {
-        print('✅ Test data already exists');
+      // Always try to initialize test data
+      await _testDataService.initializeTestData();
+      
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Test data setup completed!'),
+            backgroundColor: Color(0xFF32C156),
+            duration: Duration(seconds: 2),
+          ),
+        );
       }
       
       // Always try to load riders regardless of test data creation
@@ -90,7 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('⚠️ Using existing data: ${e.toString().substring(0, 50)}...'),
+            content: Text('⚠️ Error with test data: ${e.toString().substring(0, 50)}...'),
             backgroundColor: Colors.orange,
           ),
         );

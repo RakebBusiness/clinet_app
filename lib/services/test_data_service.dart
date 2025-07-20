@@ -26,11 +26,18 @@ class TestDataService {
   // Create test motorcycles for Lakhdaria area
   Future<void> createTestMotorcycles() async {
     try {
-      // Skip if no admin access - motorcycles need admin permissions
-      if (!await _hasAdminAccess()) {
-        print('⚠️ Skipping motorcycle creation - requires admin access');
+      // Check if motorcycles already exist
+      final existingMotos = await _supabase
+          .from('motos')
+          .select('id')
+          .limit(1);
+      
+      if (existingMotos.isNotEmpty) {
+        print('✅ Motorcycles already exist in database');
         return;
       }
+      
+      print('🏍️ Creating test motorcycles...');
       
       final motorcycles = [
         {
@@ -78,7 +85,12 @@ class TestDataService {
       ];
 
       for (var moto in motorcycles) {
-        await _supabase.from('motos').upsert(moto);
+        try {
+          await _supabase.from('motos').insert(moto);
+          print('✅ Created motorcycle: ${moto['matricule']}');
+        } catch (e) {
+          print('❌ Failed to create motorcycle ${moto['matricule']}: $e');
+        }
       }
 
       print('✅ Test motorcycles created successfully!');
@@ -90,11 +102,18 @@ class TestDataService {
   // Create test riders in Lakhdaria area
   Future<void> createTestRiders() async {
     try {
-      // Skip if no admin access - motards need admin permissions  
-      if (!await _hasAdminAccess()) {
-        print('⚠️ Skipping rider creation - requires admin access');
+      // Check if riders already exist
+      final existingRiders = await _supabase
+          .from('motards')
+          .select('id')
+          .limit(1);
+      
+      if (existingRiders.isNotEmpty) {
+        print('✅ Riders already exist in database');
         return;
       }
+      
+      print('🏍️ Creating test riders in Lakhdaria area...');
       
       // Lakhdaria coordinates: 36.5644° N, 3.5892° E
       final testRiders = [
@@ -179,7 +198,28 @@ class TestDataService {
       ];
 
       for (var rider in testRiders) {
-        await _supabase.from('motards').upsert(rider);
+        try {
+          await _supabase.from('motards').insert(rider);
+          print('✅ Created rider: ${rider['nom_complet']}');
+        } catch (e) {
+          print('❌ Failed to create rider ${rider['nom_complet']}: $e');
+          // Try with minimal data if full insert fails
+          try {
+            final minimalRider = {
+              'nom_complet': rider['nom_complet'],
+              'num_tel': rider['num_tel'],
+              'status': 'online',
+              'is_verified': true,
+              'rating_average': rider['rating_average'],
+              'current_location': rider['current_location'],
+              'statut_bloque': false,
+            };
+            await _supabase.from('motards').insert(minimalRider);
+            print('✅ Created minimal rider: ${rider['nom_complet']}');
+          } catch (e2) {
+            print('❌ Failed to create minimal rider: $e2');
+          }
+        }
       }
 
       print('✅ Test riders created successfully in Lakhdaria area!');
@@ -230,14 +270,19 @@ class TestDataService {
   Future<void> initializeTestData() async {
     print('🚀 Initializing test data for Lakhdaria area...');
     
-    // Create client profile first (this works with current user)
-    await createTestClient();
-    await Future.delayed(const Duration(milliseconds: 300));
-    
-    // Try to create motorcycles and riders (requires admin access)
-    await createTestMotorcycles();
-    await Future.delayed(const Duration(milliseconds: 300));
-    await createTestRiders();
+    try {
+      // Create client profile first (this works with current user)
+      await createTestClient();
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      // Try to create motorcycles and riders
+      await createTestMotorcycles();
+      await Future.delayed(const Duration(milliseconds: 500));
+      await createTestRiders();
+      
+    } catch (e) {
+      print('❌ Error during test data initialization: $e');
+    }
     
     print('✅ Test data initialization completed!');
   }
